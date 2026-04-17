@@ -1,31 +1,16 @@
 package com.veonpixeltrackerrn
 
-import com.facebook.react.BaseReactPackage
+import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.module.model.ReactModuleInfo
-import com.facebook.react.module.model.ReactModuleInfoProvider
-import java.util.HashMap
+import com.facebook.react.uimanager.ViewManager
 
-class VeonPixelTrackerRnPackage : BaseReactPackage() {
-  override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
-    return if (name == VeonPixelTrackerRnModule.NAME) {
-      VeonPixelTrackerRnModule(reactContext)
-    } else {
-      null
-    }
+class VeonPixelTrackerRnPackage : ReactPackage {
+  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
+    return listOf(VeonPixelTrackerRnModule(reactContext))
   }
 
-  override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
-    mapOf(
-      VeonPixelTrackerRnModule.NAME to ReactModuleInfo(
-        name = VeonPixelTrackerRnModule.NAME,
-        className = VeonPixelTrackerRnModule.NAME,
-        canOverrideExistingModule = false,
-        needsEagerInit = false,
-        isCxxModule = false,
-        isTurboModule = true
-      )
-    )
+  override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
+    return emptyList()
   }
 }

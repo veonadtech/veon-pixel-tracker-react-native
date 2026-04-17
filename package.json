@@ -33,6 +33,8 @@
   ],
   "scripts": {
     "example": "yarn workspace veon-pixel-tracker-rn-example",
+    "android": "cd example && yarn android",
+    "ios": "cd example && yarn ios",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
@@ -47,14 +49,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git.git"
+    "url": "git+https://github.com:veonadtech/veon-pixel-tracker-react-native.git.git"
   },
   "author": "Aleksei Grachev <gracaled79@gmail.com> (https://github.com/SitoGitHub)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git/issues"
+    "url": "https://github.com:veonadtech/veon-pixel-tracker-react-native.git/issues"
   },
-  "homepage": "https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git#readme",
+  "homepage": "https://github.com:veonadtech/veon-pixel-tracker-react-native.git#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

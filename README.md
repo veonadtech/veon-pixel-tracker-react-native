@@ -4,14 +4,11 @@ React Native plugin for Veon Pixel Tracker SDK
 
 ## Installation
 
-
 ```sh
 npm install veon-pixel-tracker-rn
 ```
 
-
 ## Usage
-
 
 ```js
 import { multiply } from 'veon-pixel-tracker-rn';
@@ -20,7 +17,6 @@ import { multiply } from 'veon-pixel-tracker-rn';
 
 const result = multiply(3, 7);
 ```
-
 
 ## Contributing
 
