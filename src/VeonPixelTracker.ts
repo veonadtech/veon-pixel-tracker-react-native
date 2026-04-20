@@ -1,39 +1,31 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter } from 'react-native';
+import NativeVeonPixelTrackerRn from './NativeVeonPixelTrackerRn';
 import type { Spec } from './NativeVeonPixelTrackerRn';
 
-// Получаем нативный модуль
-const nativeModule = NativeModules.VeonPixelTrackerRn as Spec;
-const nativeModuleForEvents = NativeModules.VeonPixelTrackerRn;
+const LINKING_ERROR =
+  `The package 'veon-pixel-tracker-rn' doesn't seem to be linked properly.\n\n` +
+  `Make sure:\n` +
+  `- You rebuilt the app after installing the package\n` +
+  `- You are not using Expo Go\n` +
+  `- The module is properly registered in Android/iOS\n`;
 
-/**
- * Главный класс Pixel Tracker SDK
- */
 class VeonPixelTracker {
-  private static instance: VeonPixelTracker | null = null;
   private static isSDKInitialized = false;
-  private static eventEmitter: NativeEventEmitter | null = null;
-  private static nativeModule: Spec | null = null;
+  private static _eventEmitter: NativeEventEmitter | null = null;
 
-  private constructor() {
-    if (!nativeModule) {
-      console.error('❌ Native module not available');
-      return;
+  private static getNativeModule(): Spec {
+    if (!NativeVeonPixelTrackerRn) {
+      throw new Error(LINKING_ERROR);
     }
-    VeonPixelTracker.nativeModule = nativeModule;
-
-    // Создаем EventEmitter только если модуль поддерживает события
-    if (nativeModuleForEvents) {
-      VeonPixelTracker.eventEmitter = new NativeEventEmitter(
-        nativeModuleForEvents
-      );
-    }
+    return NativeVeonPixelTrackerRn;
   }
 
-  private static getInstance(): VeonPixelTracker {
-    if (!VeonPixelTracker.instance) {
-      VeonPixelTracker.instance = new VeonPixelTracker();
+  private static getEventEmitter(): NativeEventEmitter {
+    if (!this._eventEmitter) {
+      const mod = this.getNativeModule();
+      this._eventEmitter = new NativeEventEmitter(mod as any);
     }
-    return VeonPixelTracker.instance;
+    return this._eventEmitter;
   }
 
   static async initialize(
@@ -45,15 +37,12 @@ class VeonPixelTracker {
       return;
     }
 
-    if (!this.nativeModule) {
-      throw new Error('Native module not available');
-    }
+    const module = this.getNativeModule();
 
     try {
-      const success = await this.nativeModule.initialize(baseUrl, debug);
+      const success = await module.initialize(baseUrl, debug);
       if (success) {
         this.isSDKInitialized = true;
-        this.getInstance();
         console.log('✅ PixelTracker initialized successfully');
       }
     } catch (error) {
@@ -63,28 +52,24 @@ class VeonPixelTracker {
   }
 
   static async isInitialized(): Promise<boolean> {
-    if (!this.isSDKInitialized || !this.nativeModule) {
-      return false;
-    }
-    return await this.nativeModule.isInitialized();
+    if (!this.isSDKInitialized) return false;
+    return await this.getNativeModule().isInitialized();
   }
 
   static async shutdown(): Promise<void> {
-    if (!this.isSDKInitialized || !this.nativeModule) {
-      return;
-    }
-
-    await this.nativeModule.shutdown();
+    if (!this.isSDKInitialized) return;
+    await this.getNativeModule().shutdown();
     this.isSDKInitialized = false;
+    this._eventEmitter = null;
     console.log('🔌 PixelTracker shut down');
   }
 
-  static get events(): NativeEventEmitter | null {
-    return this.eventEmitter;
+  static get events(): NativeEventEmitter {
+    return this.getEventEmitter();
   }
 
-  static getNativeModule(): Spec | null {
-    return this.nativeModule;
+  static get module(): Spec {
+    return this.getNativeModule();
   }
 }
 

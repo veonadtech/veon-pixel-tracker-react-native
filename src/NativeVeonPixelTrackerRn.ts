@@ -1,18 +1,17 @@
-import { TurboModuleRegistry, type TurboModule } from 'react-native';
+import {
+  TurboModuleRegistry,
+  NativeModules,
+  type TurboModule,
+} from 'react-native';
 
 export interface Spec extends TurboModule {
-  // Основные методы SDK (аналог Flutter)
   initialize(baseUrl: string, debug: boolean): Promise<boolean>;
   isInitialized(): Promise<boolean>;
   shutdown(): Promise<void>;
-
-  // Методы для управления пикселем
   startTracking(pixelId: string, nativeTag: number): Promise<void>;
   stopTracking(pixelId: string): Promise<void>;
   updateRefreshTime(pixelId: string, seconds: number): Promise<void>;
   setVisibilityCheckInterval(pixelId: string, seconds: number): Promise<void>;
-
-  // Получение статистики пикселя
   getPixelStats(pixelId: string): Promise<{
     totalAppearances: number;
     isCurrentlyVisible: boolean;
@@ -20,9 +19,14 @@ export interface Spec extends TurboModule {
     nextRefreshInMs: number;
     nextRefreshInSeconds: number;
   }>;
-
-  // Вспомогательные методы
   destroyPixel(pixelId: string): Promise<void>;
+  test(): Promise<string>;
 }
 
-export default TurboModuleRegistry.getEnforcing<Spec>('VeonPixelTrackerRn');
+// Пробуем TurboModule (новая архитектура), fallback на NativeModules (старая)
+const NativeVeonPixelTrackerRn: Spec | null =
+  TurboModuleRegistry.get<Spec>('VeonPixelTrackerRn') ??
+  (NativeModules.VeonPixelTrackerRn as Spec | undefined) ??
+  null;
+
+export default NativeVeonPixelTrackerRn;

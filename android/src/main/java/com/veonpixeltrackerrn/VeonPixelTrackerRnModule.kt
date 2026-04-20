@@ -12,30 +12,22 @@ import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.ConcurrentHashMap
 import com.facebook.react.uimanager.UIManagerModule
-import com.facebook.react.bridge.UiThreadUtil
 
-/**
- * React Native Module for Pixel Tracker SDK
- */
 class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
-  override fun getName(): String = "VeonPixelTrackerRn"
+  override fun getName(): String = NAME
 
-  // Хранилище активных пикселей
+  companion object {
+    const val NAME = "VeonPixelTrackerRn"
+  }
+
   private val activePixels = ConcurrentHashMap<String, PixelTracker>()
-
-  // Состояние SDK
   private var isSdkInitialized = false
   private var baseUrl: String = ""
   private var isDebugMode = false
-
-  // Главный обработчик для таймеров
   private val mainHandler = Handler(Looper.getMainLooper())
 
-  /**
-   * Внутренний класс для отслеживания отдельного пикселя
-   */
   inner class PixelTracker(
     val pixelId: String,
     private val viewTag: Int,
@@ -50,9 +42,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
     private var refreshRunnable: Runnable? = null
     private var lastRefreshTime = 0L
 
-    /**
-     * Запуск отслеживания пикселя
-     */
     fun startTracking() {
       if (isTracking) return
       isTracking = true
@@ -61,9 +50,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       logDebug("Pixel $pixelId: Tracking started")
     }
 
-    /**
-     * Остановка отслеживания пикселя
-     */
     fun stopTracking() {
       isTracking = false
       stopVisibilityCheck()
@@ -71,9 +57,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       logDebug("Pixel $pixelId: Tracking stopped")
     }
 
-    /**
-     * Обновление интервала обновления
-     */
     fun updateRefreshTime(seconds: Int) {
       refreshTimeSeconds = seconds
       if (isTracking) {
@@ -83,9 +66,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       logDebug("Pixel $pixelId: Refresh time updated to $seconds seconds")
     }
 
-    /**
-     * Обновление интервала проверки видимости
-     */
     fun updateVisibilityCheckInterval(seconds: Int) {
       visibilityCheckInterval = seconds
       if (isTracking) {
@@ -95,9 +75,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       logDebug("Pixel $pixelId: Visibility check interval updated to $seconds seconds")
     }
 
-    /**
-     * Запуск периодической проверки видимости
-     */
     private fun startVisibilityCheck() {
       checkRunnable = object : Runnable {
         override fun run() {
@@ -110,22 +87,17 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       checkRunnable?.let { mainHandler.post(it) }
     }
 
-    /**
-     * Остановка проверки видимости
-     */
     private fun stopVisibilityCheck() {
       checkRunnable?.let { mainHandler.removeCallbacks(it) }
       checkRunnable = null
     }
 
-    /**
-     * Запуск таймера обновления
-     */
     private fun startRefreshTimer() {
       refreshRunnable = object : Runnable {
         override fun run() {
           if (isTracking && isVisible) {
             sendRefreshEvent()
+            lastRefreshTime = System.currentTimeMillis()
             mainHandler.postDelayed(this, refreshTimeSeconds * 1000L)
           } else if (isTracking) {
             mainHandler.postDelayed(this, refreshTimeSeconds * 1000L)
@@ -135,25 +107,17 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       refreshRunnable?.let { mainHandler.post(it) }
     }
 
-    /**
-     * Остановка таймера обновления
-     */
     private fun stopRefreshTimer() {
       refreshRunnable?.let { mainHandler.removeCallbacks(it) }
       refreshRunnable = null
     }
 
-    /**
-     * Проверка видимости пикселя
-     */
     private fun checkVisibility() {
       try {
-        val view = getViewByTag(viewTag)
-        if (view == null) {
+        val view = getViewByTag(viewTag) ?: run {
           logDebug("Pixel $pixelId: View not found")
           return
         }
-
         val rect = Rect()
         val isViewVisible = view.getGlobalVisibleRect(rect)
         val isSufficientlyVisible = rect.width() >= visibilityThreshold &&
@@ -177,9 +141,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       }
     }
 
-    /**
-     * Получение View по тегу
-     */
     private fun getViewByTag(tag: Int): View? {
       return try {
         val uiManager = reactApplicationContext.getNativeModule(UIManagerModule::class.java)
@@ -190,9 +151,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       }
     }
 
-    /**
-     * Отправка события появления
-     */
     private fun sendAppearanceEvent() {
       val params = Arguments.createMap().apply {
         putString("type", "appearance")
@@ -202,9 +160,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       sendEvent("onPixelEvent", params)
     }
 
-    /**
-     * Отправка события исчезновения
-     */
     private fun sendDisappearanceEvent() {
       val params = Arguments.createMap().apply {
         putString("type", "disappearance")
@@ -214,9 +169,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       sendEvent("onPixelEvent", params)
     }
 
-    /**
-     * Отправка события обновления
-     */
     private fun sendRefreshEvent() {
       val params = Arguments.createMap().apply {
         putString("type", "refresh")
@@ -227,9 +179,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       logDebug("Pixel $pixelId: Refresh event sent")
     }
 
-    /**
-     * Отправка события ошибки
-     */
     private fun sendErrorEvent(errorMessage: String) {
       val params = Arguments.createMap().apply {
         putString("type", "error")
@@ -240,16 +189,11 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       sendEvent("onPixelEvent", params)
     }
 
-    /**
-     * Получение статистики пикселя
-     */
     fun getStats(): com.facebook.react.bridge.ReadableMap {
       val nextRefreshMs = if (isVisible && refreshTimeSeconds > 0) {
         val nextTime = lastRefreshTime + (refreshTimeSeconds * 1000L)
         (nextTime - System.currentTimeMillis()).coerceAtLeast(0)
-      } else {
-        0L
-      }
+      } else 0L
 
       return Arguments.createMap().apply {
         putInt("totalAppearances", totalAppearances)
@@ -260,16 +204,13 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       }
     }
 
-    /**
-     * Уничтожение пикселя
-     */
     fun destroy() {
       stopTracking()
       logDebug("Pixel $pixelId: Destroyed")
     }
   }
 
-  // ======================== ПУБЛИЧНЫЕ МЕТОДЫ SDK ========================
+  // ======================== PUBLIC SDK METHODS ========================
 
   @ReactMethod
   fun initialize(baseUrl: String, debug: Boolean, promise: Promise) {
@@ -277,9 +218,7 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       this.baseUrl = baseUrl
       this.isDebugMode = debug
       this.isSdkInitialized = true
-
       logDebug("SDK initialized with baseUrl: $baseUrl")
-
       val result = Arguments.createMap().apply {
         putBoolean("success", true)
         putDouble("timestamp", System.currentTimeMillis().toDouble())
@@ -300,10 +239,8 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun shutdown(promise: Promise) {
     try {
-      // Останавливаем все активные пиксели
       activePixels.values.forEach { it.destroy() }
       activePixels.clear()
-
       isSdkInitialized = false
       logDebug("SDK shut down")
       promise.resolve(null)
@@ -318,7 +255,6 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
       promise.reject("NOT_INITIALIZED", "SDK not initialized. Call initialize() first.")
       return
     }
-
     try {
       var pixel = activePixels[pixelId]
       if (pixel == null) {
@@ -366,11 +302,7 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
   fun getPixelStats(pixelId: String, promise: Promise) {
     try {
       val stats = activePixels[pixelId]?.getStats()
-      if (stats != null) {
-        promise.resolve(stats)
-      } else {
-        promise.resolve(Arguments.createMap())
-      }
+      promise.resolve(stats ?: Arguments.createMap())
     } catch (e: Exception) {
       promise.reject("STATS_ERROR", "Failed to get pixel stats", e)
     }
@@ -387,11 +319,13 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  // ======================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ========================
+  @ReactMethod
+  fun test(promise: Promise) {
+    promise.resolve("OK")
+  }
 
-  /**
-   * Отправка событий в JavaScript часть
-   */
+  // ======================== HELPERS ========================
+
   private fun sendEvent(eventName: String, params: com.facebook.react.bridge.ReadableMap) {
     try {
       reactApplicationContext
@@ -402,18 +336,10 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /**
-   * Логирование в режиме отладки
-   */
   private fun logDebug(message: String) {
-    if (isDebugMode) {
-      android.util.Log.d("VeonPixelTrackerRn", message)
-    }
+    if (isDebugMode) android.util.Log.d("VeonPixelTrackerRn", message)
   }
 
-  /**
-   * Логирование ошибок
-   */
   private fun logError(message: String) {
     android.util.Log.e("VeonPixelTrackerRn", message)
   }
