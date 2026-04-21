@@ -1,4 +1,4 @@
-import { NativeEventEmitter } from 'react-native';
+import { NativeEventEmitter, NativeModules } from 'react-native';
 import NativeVeonPixelTrackerRn from './NativeVeonPixelTrackerRn';
 import type { Spec } from './NativeVeonPixelTrackerRn';
 
@@ -22,8 +22,11 @@ class VeonPixelTracker {
 
   private static getEventEmitter(): NativeEventEmitter {
     if (!this._eventEmitter) {
-      const mod = this.getNativeModule();
-      this._eventEmitter = new NativeEventEmitter(mod as any);
+      // NativeEventEmitter requires an object with addListener/removeListeners
+      // Take it from NativeModules for compatibility with both architectures
+      const nativeModule =
+        NativeModules.VeonPixelTrackerRn ?? NativeVeonPixelTrackerRn;
+      this._eventEmitter = new NativeEventEmitter(nativeModule);
     }
     return this._eventEmitter;
   }

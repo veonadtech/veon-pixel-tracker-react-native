@@ -1,9 +1,16 @@
 buildscript {
-  ext {
-    kotlinVersion = "2.0.21"
-    minSdk = 24
-    compileSdk = 36
-    targetSdk = 36
+  ext.VeonPixelTrackerRn = [
+    kotlinVersion: "2.0.21",
+    minSdkVersion: 21,
+    compileSdkVersion: 36,
+    targetSdkVersion: 36
+  ]
+
+  ext.getExtOrDefault = { prop ->
+    if (rootProject.ext.has(prop)) {
+      return rootProject.ext.get(prop)
+    }
+    return VeonPixelTrackerRn[prop]
   }
 
   repositories {
@@ -13,7 +20,7 @@ buildscript {
 
   dependencies {
     classpath "com.android.tools.build:gradle:8.7.2"
-    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
 }
 
@@ -23,29 +30,40 @@ apply plugin: "com.facebook.react"
 
 android {
   namespace "com.veonpixeltrackerrn"
-
-  compileSdk = 36
+  compileSdkVersion getExtOrDefault("compileSdkVersion")
 
   defaultConfig {
-    minSdk = 24
-    targetSdk = 36
+    minSdkVersion getExtOrDefault("minSdkVersion")
+    targetSdkVersion getExtOrDefault("targetSdkVersion")
   }
 
   buildFeatures {
     buildConfig true
   }
 
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+
+  lint {
+    disable "GradleCompatible"
+  }
+
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
   }
+}
 
-  kotlinOptions {
-    jvmTarget = "17"
-  }
+repositories {
+  google()
+  mavenCentral()
+  maven { url "https://jitpack.io" }
 }
 
 dependencies {
   implementation "com.facebook.react:react-android"
-  implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+  implementation "com.github.veonadtech:pixel-tracker-android-sdk:0.2.1"
 }

@@ -23,7 +23,7 @@ export interface Spec extends TurboModule {
   test(): Promise<string>;
 }
 
-// Пробуем TurboModule (новая архитектура), fallback на NativeModules (старая)
+// TurboModule (new architecture), fallback to NativeModules (old architecture)
 const NativeVeonPixelTrackerRn: Spec | null =
   TurboModuleRegistry.get<Spec>('VeonPixelTrackerRn') ??
   (NativeModules.VeonPixelTrackerRn as Spec | undefined) ??

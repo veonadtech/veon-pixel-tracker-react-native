@@ -1,7 +1,18 @@
-import React, { useRef, useEffect } from 'react';
-import { View, findNodeHandle, type ViewStyle } from 'react-native';
-import PixelController from '../core/PixelController';
+import React, { useEffect } from 'react';
+import { requireNativeComponent, View, type ViewStyle } from 'react-native';
 import type { PixelEventData } from '../models/PixelEvent';
+import VeonPixelTracker from '../VeonPixelTracker';
+
+const NATIVE_VIEW_NAME = 'PixelTrackerView';
+
+const NativePixelTrackerView = requireNativeComponent<{
+  pixelId: string;
+  refreshTimeSeconds?: number;
+  pixelSize?: number;
+  visibilityThreshold?: number;
+  color?: string;
+  style?: ViewStyle;
+}>(NATIVE_VIEW_NAME);
 
 interface PixelTrackerViewProps {
   pixelId: string;
@@ -10,36 +21,44 @@ interface PixelTrackerViewProps {
   visibilityThreshold?: number;
   color?: string;
   style?: ViewStyle;
-  onPixelCreated?: (controller: PixelController) => void;
   onEvent?: (event: PixelEventData) => void;
 }
 
 export const PixelTrackerView: React.FC<PixelTrackerViewProps> = ({
   pixelId,
+  refreshTimeSeconds = 5,
   pixelSize = 40,
+  visibilityThreshold = 1,
   color = '#FF0000',
   style,
-  onPixelCreated,
+  onEvent,
 }) => {
-  const nativeRef = useRef(null);
-  const controllerRef = useRef<PixelController | null>(null);
-
   useEffect(() => {
-    const nativeTag = findNodeHandle(nativeRef.current);
-    if (nativeTag && !controllerRef.current) {
-      const controller = new PixelController(pixelId, nativeTag);
-      controllerRef.current = controller;
-      onPixelCreated?.(controller);
-    }
-  }, [pixelId, onPixelCreated]);
+    if (!onEvent) return;
+
+    const subscription = VeonPixelTracker.events.addListener(
+      'onPixelEvent',
+      (event: unknown) => {
+        const pixelEvent = event as PixelEventData;
+        if (pixelEvent.pixelId === pixelId) {
+          onEvent(pixelEvent);
+        }
+      }
+    );
+
+    return () => subscription.remove();
+  }, [pixelId, onEvent]);
 
   return (
-    <View
-      ref={nativeRef}
-      style={[
-        { width: pixelSize, height: pixelSize, backgroundColor: color },
-        style,
-      ]}
-    />
+    <View style={[{ width: pixelSize, height: pixelSize }, style]}>
+      <NativePixelTrackerView
+        pixelId={pixelId}
+        refreshTimeSeconds={refreshTimeSeconds}
+        pixelSize={pixelSize}
+        visibilityThreshold={visibilityThreshold}
+        color={color}
+        style={{ flex: 1 }}
+      />
+    </View>
   );
 };

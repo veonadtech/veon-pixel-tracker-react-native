@@ -7,14 +7,14 @@ export type PixelEventType =
 export interface PixelEventData {
   type: PixelEventType;
   pixelId: string;
-  timestamp: number;
+  timestamp: string;
   error?: string;
 }
 
 export class PixelEvent {
   readonly type: PixelEventType;
   readonly pixelId: string;
-  readonly timestamp: number;
+  readonly timestamp: string;
   readonly error?: string;
 
   constructor(data: PixelEventData) {

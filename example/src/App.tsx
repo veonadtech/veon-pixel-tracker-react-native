@@ -66,13 +66,8 @@ const App = () => {
         pixelSize={40}
         visibilityThreshold={1}
         color="#FF0000"
-        onPixelCreated={(controller) => {
-          console.log('✅ Pixel created:', controller);
-          controller.setVisibilityCheckInterval(3);
-          controller.start();
-        }}
         onEvent={(event) => {
-          console.log('📱 Pixel event:', event);
+          console.log('📱 Pixel event:', event.type, event.timestamp);
         }}
       />
 
