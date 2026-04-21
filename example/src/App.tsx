@@ -34,10 +34,7 @@ const App = () => {
   useEffect(() => {
     const initSDK = async () => {
       try {
-        await VeonPixelTracker.initialize(
-          'https://pixel-tracker.veonadtech.com/v1/pixel-event',
-          true
-        );
+        await VeonPixelTracker.initialize('https://api.example.com', true);
         const initialized = await VeonPixelTracker.isInitialized();
         if (initialized) setIsInitialized(true);
       } catch (err) {
