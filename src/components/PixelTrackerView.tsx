@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { requireNativeComponent, View, type ViewStyle } from 'react-native';
 import type { PixelEventData } from '../models/PixelEvent';
 import VeonPixelTracker from '../VeonPixelTracker';
@@ -33,21 +33,24 @@ export const PixelTrackerView: React.FC<PixelTrackerViewProps> = ({
   style,
   onEvent,
 }) => {
+  const onEventRef = useRef<typeof onEvent>(onEvent);
   useEffect(() => {
-    if (!onEvent) return;
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
+  useEffect(() => {
     const subscription = VeonPixelTracker.events.addListener(
       'onPixelEvent',
       (event: unknown) => {
         const pixelEvent = event as PixelEventData;
         if (pixelEvent.pixelId === pixelId) {
-          onEvent(pixelEvent);
+          onEventRef.current?.(pixelEvent);
         }
       }
     );
 
     return () => subscription.remove();
-  }, [pixelId, onEvent]);
+  }, [pixelId]);
 
   return (
     <View style={[{ width: pixelSize, height: pixelSize }, style]}>

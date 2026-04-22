@@ -49,14 +49,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com:veonadtech/veon-pixel-tracker-react-native.git.git"
+    "url": "git+https://github.com/veonadtech/veon-pixel-tracker-react-native.git"
   },
   "author": "Aleksei Grachev <gracaled79@gmail.com> (https://github.com/SitoGitHub)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com:veonadtech/veon-pixel-tracker-react-native.git/issues"
+    "url": "https://github.com/veonadtech/veon-pixel-tracker-react-native/issues"
   },
-  "homepage": "https://github.com:veonadtech/veon-pixel-tracker-react-native.git#readme",
+  "homepage": "https://github.com/veonadtech/veon-pixel-tracker-react-native#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

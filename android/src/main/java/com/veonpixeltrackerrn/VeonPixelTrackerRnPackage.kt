@@ -27,7 +27,7 @@ class VeonPixelTrackerRnPackage : BaseReactPackage() {
           false,  // needsEagerInit
           false,  // hasConstants
           false,  // isCxxModule
-          false   // isTurboModule — false для совместимости со старой архитектурой
+          false   // isTurboModule — false for old architecture backward compatibility
         )
       )
     }

@@ -23,10 +23,21 @@ export interface Spec extends TurboModule {
   test(): Promise<string>;
 }
 
+const LINKING_ERROR = `
+The package 'veon-pixel-tracker-rn' doesn't seem to be linked properly.
+Make sure:
+- You rebuilt the app after installing the package
+- You are not using Expo Go
+- The module is properly registered in Android/iOS
+`;
+
 // TurboModule (new architecture), fallback to NativeModules (old architecture)
-const NativeVeonPixelTrackerRn: Spec | null =
+const NativeVeonPixelTrackerRn =
   TurboModuleRegistry.get<Spec>('VeonPixelTrackerRn') ??
-  (NativeModules.VeonPixelTrackerRn as Spec | undefined) ??
-  null;
+  (NativeModules.VeonPixelTrackerRn as Spec | undefined);
+
+if (!NativeVeonPixelTrackerRn) {
+  throw new Error(LINKING_ERROR);
+}
 
 export default NativeVeonPixelTrackerRn;
