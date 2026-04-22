@@ -11,6 +11,16 @@ android {
     targetSdk 36
   }
 
+  publishing {
+    singleVariant("release") {
+      withSourcesJar()
+      withJavadocJar()
+    }
+    singleVariant("debug") {
+      withSourcesJar()
+    }
+  }
+
   buildFeatures {
     buildConfig true
   }
