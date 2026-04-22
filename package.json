@@ -1,6 +1,6 @@
 {
   "name": "veon-pixel-tracker-rn",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "React Native plugin for Veon Pixel Tracker SDK",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
