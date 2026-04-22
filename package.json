@@ -46,7 +46,11 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "pixel-tracker",
+    "analytics",
+    "veon",
+    "adtracking"
   ],
   "repository": {
     "type": "git",
@@ -89,8 +93,8 @@
     "typescript": "^6.0.2"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=18.0.0",
+    "react-native": ">=0.73.0"
   },
   "workspaces": [
     "example"
@@ -170,5 +174,6 @@
       "release-it"
     ],
     "version": "0.62.0"
-  }
+  },
+  "sideEffects": false
 }
