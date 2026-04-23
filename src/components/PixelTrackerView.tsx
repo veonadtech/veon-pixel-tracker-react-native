@@ -1,7 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { requireNativeComponent, View, type ViewStyle } from 'react-native';
+import {
+  requireNativeComponent,
+  View,
+  type ViewStyle,
+  NativeEventEmitter,
+  NativeModules,
+} from 'react-native';
+
 import type { PixelEventData } from '../models/PixelEvent';
-import VeonPixelTracker from '../VeonPixelTracker';
+import PixelController from '../core/PixelController';
 
 const NATIVE_VIEW_NAME = 'PixelTrackerView';
 
@@ -14,6 +21,8 @@ const NativePixelTrackerView = requireNativeComponent<{
   style?: ViewStyle;
 }>(NATIVE_VIEW_NAME);
 
+const emitter = new NativeEventEmitter(NativeModules.VeonPixelTrackerRn);
+
 interface PixelTrackerViewProps {
   pixelId: string;
   refreshTimeSeconds?: number;
@@ -21,7 +30,10 @@ interface PixelTrackerViewProps {
   visibilityThreshold?: number;
   color?: string;
   style?: ViewStyle;
+
   onEvent?: (event: PixelEventData) => void;
+
+  onPixelCreated?: (controller: PixelController) => void;
 }
 
 export const PixelTrackerView: React.FC<PixelTrackerViewProps> = ({
@@ -32,24 +44,45 @@ export const PixelTrackerView: React.FC<PixelTrackerViewProps> = ({
   color = '#FF0000',
   style,
   onEvent,
+  onPixelCreated,
 }) => {
-  const onEventRef = useRef<typeof onEvent>(onEvent);
+  const onEventRef = useRef(onEvent);
+  const onCreatedRef = useRef(onPixelCreated);
+
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
 
   useEffect(() => {
-    const subscription = VeonPixelTracker.events.addListener(
-      'onPixelEvent',
-      (event: unknown) => {
-        const pixelEvent = event as PixelEventData;
-        if (pixelEvent.pixelId === pixelId) {
-          onEventRef.current?.(pixelEvent);
-        }
-      }
-    );
+    onCreatedRef.current = onPixelCreated;
+  }, [onPixelCreated]);
 
-    return () => subscription.remove();
+  useEffect(() => {
+    // ================= PIXEL EVENTS =================
+
+    const eventSub = emitter.addListener('onPixelEvent', (event: any) => {
+      const e = event as PixelEventData;
+
+      if (e.pixelId === pixelId) {
+        onEventRef.current?.(e);
+      }
+    });
+
+    // ================= CONTROLLER CREATED =================
+
+    const createdSub = emitter.addListener('onPixelCreated', (event: any) => {
+      const e = event as { pixelId: string };
+
+      if (e.pixelId === pixelId) {
+        const controller = new PixelController(pixelId);
+        onCreatedRef.current?.(controller);
+      }
+    });
+
+    return () => {
+      eventSub.remove();
+      createdSub.remove();
+    };
   }, [pixelId]);
 
   return (

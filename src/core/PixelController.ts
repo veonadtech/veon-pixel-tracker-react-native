@@ -9,10 +9,7 @@ const LINKING_ERROR =
   `- The module is properly registered in Android/iOS\n`;
 
 class PixelController {
-  constructor(
-    private pixelId: string,
-    private nativeTag: number | null
-  ) {}
+  constructor(private pixelId: string) {}
 
   private get native() {
     if (!NativeVeonPixelTrackerRn) {
@@ -22,8 +19,7 @@ class PixelController {
   }
 
   async start(): Promise<void> {
-    if (!this.nativeTag) return;
-    await this.native.startTracking(this.pixelId, this.nativeTag);
+    await this.native.startTracking(this.pixelId);
   }
 
   async stop(): Promise<void> {
@@ -32,7 +28,6 @@ class PixelController {
 
   async destroy(): Promise<void> {
     await this.native.destroyPixel(this.pixelId);
-    this.nativeTag = null;
   }
 
   async updateRefreshTime(seconds: number): Promise<void> {

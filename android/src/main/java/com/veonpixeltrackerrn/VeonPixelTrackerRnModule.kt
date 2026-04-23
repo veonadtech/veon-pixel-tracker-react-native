@@ -1,48 +1,33 @@
 package com.veonpixeltrackerrn
 
 import android.util.Log
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.veonadtech.pixeltracker.PixelTracker
 import com.veonadtech.pixeltracker.InitStatus
+import com.veonadtech.pixeltracker.api.PixelHandle
 
-class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
-  ReactContextBaseJavaModule(reactContext) {
+class VeonPixelTrackerRnModule(
+  private val reactContext: ReactApplicationContext
+) : ReactContextBaseJavaModule(reactContext) {
 
-  override fun getName(): String = NAME
+  override fun getName() = NAME
 
   companion object {
     const val NAME = "VeonPixelTrackerRn"
     private const val TAG = "VeonPixelTrackerRn"
+
+    val pixelHandles = mutableMapOf<String, PixelHandle>()
   }
 
-  // SDK METHODS
+  // ================= INIT =================
 
   @ReactMethod
   fun initialize(baseUrl: String, debug: Boolean, promise: Promise) {
-    if (baseUrl.isBlank()) {
-      promise.reject("INVALID_ARGUMENT", "baseUrl is empty")
-      return
-    }
-
     PixelTracker.initialize(baseUrl, debug) { status ->
       when (status) {
-        is InitStatus.Success -> {
-          sendEvent("onInitialized", Arguments.createMap().apply {
-            putString("status", "success")
-          })
-          promise.resolve(true)
-        }
-        is InitStatus.Failure -> {
-          sendEvent("onInitialized", Arguments.createMap().apply {
-            putString("status", "failure")
-          })
-          promise.reject("INIT_FAILED", status.reason)
-        }
+        is InitStatus.Success -> promise.resolve(true)
+        is InitStatus.Failure -> promise.reject("INIT_FAILED", status.reason)
       }
     }
   }
@@ -54,72 +39,72 @@ class VeonPixelTrackerRnModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun shutdown(promise: Promise) {
-    try {
-      PixelTracker.shutdown()
-      sendEvent("onShutdown", Arguments.createMap())
-      promise.resolve(null)
-    } catch (e: Exception) {
-      promise.reject("SHUTDOWN_ERROR", "Failed to shutdown SDK", e)
-    }
+    PixelTracker.shutdown()
+    pixelHandles.clear()
+    promise.resolve(null)
   }
 
-  // these methods not needed — controlled via ViewManager commands
-  // Kept for backward compatibility of the JS interface
+  // ================= PIXEL CONTROL =================
+
   @ReactMethod
-  fun startTracking(pixelId: String, nativeTag: Int, promise: Promise) {
+  fun startTracking(pixelId: String, promise: Promise) {
+    pixelHandles[pixelId]?.start()
     promise.resolve(null)
   }
 
   @ReactMethod
   fun stopTracking(pixelId: String, promise: Promise) {
+    pixelHandles[pixelId]?.stop()
     promise.resolve(null)
   }
 
   @ReactMethod
+  fun destroyPixel(pixelId: String, promise: Promise) {
+    try {
+      pixelHandles[pixelId]?.destroy()
+      pixelHandles.remove(pixelId)
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("DESTROY_FAILED", e)
+    }
+  }
+
+  @ReactMethod
   fun updateRefreshTime(pixelId: String, seconds: Int, promise: Promise) {
+    pixelHandles[pixelId]?.updateRefreshTime(seconds.toLong())
     promise.resolve(null)
   }
 
   @ReactMethod
   fun setVisibilityCheckInterval(pixelId: String, seconds: Int, promise: Promise) {
+    pixelHandles[pixelId]?.setVisibilityCheckInterval(seconds.toLong())
     promise.resolve(null)
   }
 
   @ReactMethod
   fun getPixelStats(pixelId: String, promise: Promise) {
-    promise.resolve(Arguments.createMap())
-  }
-
-  @ReactMethod
-  fun destroyPixel(pixelId: String, promise: Promise) {
-    promise.resolve(null)
-  }
-
-  @ReactMethod
-  fun test(promise: Promise) {
-    promise.resolve("OK")
-  }
-
-  @ReactMethod
-  fun addListener(eventName: String) {
-    // Required for NativeEventEmitter
-  }
-
-  @ReactMethod
-  fun removeListeners(count: Int) {
-    // Required for NativeEventEmitter
-  }
-
-  // ======================== HELPERS ========================
-
-  private fun sendEvent(eventName: String, params: com.facebook.react.bridge.ReadableMap) {
     try {
-      reactApplicationContext
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-        ?.emit(eventName, params)
+      val stats = pixelHandles[pixelId]?.getStats()
+
+      if (stats == null) {
+        promise.resolve(null)
+        return
+      }
+
+      val map = Arguments.createMap().apply {
+        putInt("totalAppearances", stats.totalAppearances.get())
+        putBoolean("isCurrentlyVisible", stats.isCurrentlyVisible)
+        putBoolean("refreshEnabled", stats.refreshEnabled)
+        putDouble("nextRefreshInMs", stats.nextRefreshInMs.toDouble())
+        putDouble("nextRefreshInSeconds", stats.nextRefreshInMs / 1000.0)
+      }
+
+      promise.resolve(map)
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to send event $eventName: ${e.message}")
+      promise.reject("GET_STATS_FAILED", e)
     }
   }
 
+  @ReactMethod fun addListener(eventName: String) {}
+  @ReactMethod fun removeListeners(count: Int) {}
 }

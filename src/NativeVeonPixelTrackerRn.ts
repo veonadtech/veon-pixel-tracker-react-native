@@ -8,7 +8,7 @@ export interface Spec extends TurboModule {
   initialize(baseUrl: string, debug: boolean): Promise<boolean>;
   isInitialized(): Promise<boolean>;
   shutdown(): Promise<void>;
-  startTracking(pixelId: string, nativeTag: number): Promise<void>;
+  startTracking(pixelId: string): Promise<void>;
   stopTracking(pixelId: string): Promise<void>;
   updateRefreshTime(pixelId: string, seconds: number): Promise<void>;
   setVisibilityCheckInterval(pixelId: string, seconds: number): Promise<void>;
