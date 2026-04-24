@@ -3,13 +3,11 @@ package com.veonpixeltrackerrn
 import android.content.Context
 import android.util.Log
 import android.widget.FrameLayout
-import com.facebook.react.bridge.Arguments
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.veonadtech.pixeltracker.PixelTracker
 import com.veonadtech.pixeltracker.api.PixelConfig
 import com.veonadtech.pixeltracker.api.PixelEventListener
 import com.veonadtech.pixeltracker.api.PixelHandle
-import com.veonpixeltrackerrn.VeonPixelTrackerRnModule.Companion.pixelHandles
 
 class PixelTrackerView(context: Context) : FrameLayout(context) {
 
@@ -31,23 +29,23 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
     this.eventEmitter = emitter
   }
 
-  // ================= ATTACH =================
-
+  /**
+   * Called from ViewManager after all props have been set.
+   * Prevents duplicate attachment.
+   */
   fun attachIfNeeded() {
     if (isAttached) return
-
     if (pixelId.isBlank()) {
-      Log.w(TAG, "pixelId is empty")
+      Log.w(TAG, "pixelId is empty, skipping attach")
       return
     }
-
     if (!PixelTracker.isInitialized()) {
-      Log.e(TAG, "PixelTracker not initialized")
+      Log.e(TAG, "PixelTracker is not initialized")
       return
     }
 
     val parsedColor = colorHex?.let {
-      try { android.graphics.Color.parseColor(it) } catch (_: Exception) { null }
+      try { android.graphics.Color.parseColor(it) } catch (e: Exception) { null }
     }
 
     val config = PixelConfig(
@@ -60,60 +58,46 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
 
     val newHandle = PixelTracker.attach(context, this, config)
     if (newHandle == null) {
-      Log.e(TAG, "attach returned null for $pixelId")
+      Log.e(TAG, "PixelTracker.attach() returned null for pixelId: $pixelId")
       return
     }
 
-    // ================= EVENTS =================
-
     newHandle.setEventListener(object : PixelEventListener {
       override fun onAppearance(pixelId: String, timestamp: String) {
+        Log.d(TAG, "onAppearance: $pixelId")
         sendEvent("appearance", pixelId, timestamp)
       }
-
       override fun onDisappearance(pixelId: String, timestamp: String) {
+        Log.d(TAG, "onDisappearance: $pixelId")
         sendEvent("disappearance", pixelId, timestamp)
       }
-
       override fun onRefresh(pixelId: String, timestamp: String) {
+        Log.d(TAG, "onRefresh: $pixelId")
         sendEvent("refresh", pixelId, timestamp)
       }
-
       override fun onError(pixelId: String, error: String, timestamp: String) {
+        Log.e(TAG, "onError: $pixelId - $error")
         sendEvent("error", pixelId, timestamp, error)
       }
     })
 
     handle = newHandle
     isAttached = true
+    newHandle.start()
 
-    pixelHandles[pixelId] = newHandle
-
-    sendCreatedEvent()
-
-    Log.d(TAG, "✅ Pixel attached: $pixelId")
-  }
-
-  // ================= CONTROL =================
-
-  fun start() {
-    handle?.start()
-    Log.d(TAG, "▶️ start: $pixelId")
+    Log.d(TAG, "✅ Pixel attached and started: $pixelId")
   }
 
   fun stop() {
     handle?.stop()
-    Log.d(TAG, "⏸ stop: $pixelId")
+    Log.d(TAG, "Pixel stopped: $pixelId")
   }
 
   fun destroyPixel() {
     handle?.destroy()
-    pixelHandles.remove(pixelId)
-
     handle = null
     isAttached = false
-
-    Log.d(TAG, "🗑 destroy: $pixelId")
+    Log.d(TAG, "Pixel destroyed: $pixelId")
   }
 
   fun updateRefreshTime(seconds: Long) {
@@ -124,33 +108,18 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
     handle?.setVisibilityCheckInterval(seconds)
   }
 
-  // ================= EVENTS =================
-
-  private fun sendCreatedEvent() {
-    val params = Arguments.createMap().apply {
-      putString("pixelId", pixelId)
-    }
-
-    try {
-      eventEmitter?.emit("onPixelCreated", params)
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to emit onPixelCreated: ${e.message}")
-    }
-  }
-
   private fun sendEvent(
     type: String,
     pixelId: String,
     timestamp: String,
     error: String? = null
   ) {
-    val params = Arguments.createMap().apply {
+    val params = com.facebook.react.bridge.Arguments.createMap().apply {
       putString("type", type)
       putString("pixelId", pixelId)
       putString("timestamp", timestamp)
       error?.let { putString("error", it) }
     }
-
     try {
       eventEmitter?.emit("onPixelEvent", params)
     } catch (e: Exception) {
