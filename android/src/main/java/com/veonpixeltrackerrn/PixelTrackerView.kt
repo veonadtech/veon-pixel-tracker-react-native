@@ -3,6 +3,8 @@ package com.veonpixeltrackerrn
 import android.content.Context
 import android.util.Log
 import android.widget.FrameLayout
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.veonadtech.pixeltracker.PixelTracker
 import com.veonadtech.pixeltracker.api.PixelConfig
@@ -29,10 +31,6 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
     this.eventEmitter = emitter
   }
 
-  /**
-   * Called from ViewManager after all props have been set.
-   * Prevents duplicate attachment.
-   */
   fun attachIfNeeded() {
     if (isAttached) return
     if (pixelId.isBlank()) {
@@ -88,6 +86,11 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
     Log.d(TAG, "✅ Pixel attached and started: $pixelId")
   }
 
+  fun start() {
+    handle?.start()
+    Log.d(TAG, "Pixel started: $pixelId")
+  }
+
   fun stop() {
     handle?.stop()
     Log.d(TAG, "Pixel stopped: $pixelId")
@@ -108,13 +111,35 @@ class PixelTrackerView(context: Context) : FrameLayout(context) {
     handle?.setVisibilityCheckInterval(seconds)
   }
 
+  fun getStats(promise: Promise) {
+    val h = handle
+    if (h == null) {
+      promise.resolve(Arguments.createMap())
+      return
+    }
+    try {
+      val stats = h.getStats()
+      val result = Arguments.createMap().apply {
+        putInt("totalAppearances", stats.totalAppearances.get())
+        putBoolean("isCurrentlyVisible", stats.isCurrentlyVisible)
+        putBoolean("refreshEnabled", stats.refreshEnabled)
+        putDouble("nextRefreshInMs", stats.nextRefreshInMs.toDouble())
+        putDouble("nextRefreshInSeconds", (stats.nextRefreshInMs / 1000).toDouble())
+      }
+      promise.resolve(result)
+    } catch (e: Exception) {
+      Log.e(TAG, "getStats failed: ${e.message}")
+      promise.reject("STATS_ERROR", "Failed to get stats: ${e.message}", e)
+    }
+  }
+
   private fun sendEvent(
     type: String,
     pixelId: String,
     timestamp: String,
     error: String? = null
   ) {
-    val params = com.facebook.react.bridge.Arguments.createMap().apply {
+    val params = Arguments.createMap().apply {
       putString("type", type)
       putString("pixelId", pixelId)
       putString("timestamp", timestamp)

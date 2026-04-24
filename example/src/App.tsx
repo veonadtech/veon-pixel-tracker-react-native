@@ -1,35 +1,43 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
-import VeonPixelTracker from 'veon-pixel-tracker-rn';
-import { PixelTrackerView } from 'veon-pixel-tracker-rn';
-import type { PixelEventData } from 'veon-pixel-tracker-rn';
+import VeonPixelTracker, { PixelTrackerView } from 'veon-pixel-tracker-rn';
+import type { PixelEventData, PixelStats } from 'veon-pixel-tracker-rn';
 
-interface PixelStats {
-  totalAppearances: number;
-  isCurrentlyVisible: boolean;
-  lastEvent: string;
-  refreshCount: number;
-}
-
-const defaultStats: PixelStats = {
-  totalAppearances: 0,
-  isCurrentlyVisible: false,
-  lastEvent: '—',
-  refreshCount: 0,
-};
+const PIXELS = [
+  {
+    id: 'pixel_1',
+    refreshTimeSeconds: 10,
+    pixelSize: 40,
+    visibilityThreshold: 1,
+    color: '#FF0000',
+    label: '🔴 Pixel 1',
+  },
+  {
+    id: 'pixel_2',
+    refreshTimeSeconds: 5,
+    pixelSize: 40,
+    visibilityThreshold: 30,
+    color: '#00AA00',
+    label: '🟢 Pixel 2',
+  },
+];
 
 const App = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pixel1Stats, setPixel1Stats] = useState<PixelStats>(defaultStats);
-  const [pixel2Stats, setPixel2Stats] = useState<PixelStats>(defaultStats);
+  const [stats, setStats] = useState<Record<string, PixelStats>>({});
+  const [destroyedPixels, setDestroyedPixels] = useState<Set<string>>(
+    new Set()
+  );
+  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const initSDK = async () => {
@@ -41,49 +49,66 @@ const App = () => {
         setError(err instanceof Error ? err.message : 'Unknown error');
       }
     };
-
     initSDK();
+
     return () => {
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
       VeonPixelTracker.shutdown();
     };
   }, []);
 
-  const handlePixel1Event = useCallback((event: PixelEventData) => {
-    console.log('🔴 Pixel 1:', event.type);
-    setPixel1Stats((prev) => ({
-      totalAppearances:
-        event.type === 'appearance'
-          ? prev.totalAppearances + 1
-          : prev.totalAppearances,
-      isCurrentlyVisible:
-        event.type === 'appearance'
-          ? true
-          : event.type === 'disappearance'
-            ? false
-            : prev.isCurrentlyVisible,
-      lastEvent: event.type,
-      refreshCount:
-        event.type === 'refresh' ? prev.refreshCount + 1 : prev.refreshCount,
-    }));
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const fetchStats = async () => {
+      const newStats: Record<string, PixelStats> = {};
+      for (const pixel of PIXELS) {
+        try {
+          const s = await VeonPixelTracker.getPixelStats(pixel.id);
+          if (s) newStats[pixel.id] = s;
+        } catch {
+          // Ignore stats fetch errors
+        }
+      }
+      setStats(newStats);
+    };
+
+    statsIntervalRef.current = setInterval(fetchStats, 2000);
+    return () => {
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
+    };
+  }, [isInitialized]);
+
+  const handleEvent = useCallback(
+    (pixelId: string) => (event: PixelEventData) => {
+      console.log(`📍 ${pixelId}: ${event.type}`);
+    },
+    []
+  );
+
+  const handleStart = useCallback(async (pixelId: string) => {
+    try {
+      await VeonPixelTracker.startPixel(pixelId);
+    } catch (_error) {
+      console.warn(`Start failed for ${pixelId}:`, _error);
+    }
   }, []);
 
-  const handlePixel2Event = useCallback((event: PixelEventData) => {
-    console.log('🟢 Pixel 2:', event.type);
-    setPixel2Stats((prev) => ({
-      totalAppearances:
-        event.type === 'appearance'
-          ? prev.totalAppearances + 1
-          : prev.totalAppearances,
-      isCurrentlyVisible:
-        event.type === 'appearance'
-          ? true
-          : event.type === 'disappearance'
-            ? false
-            : prev.isCurrentlyVisible,
-      lastEvent: event.type,
-      refreshCount:
-        event.type === 'refresh' ? prev.refreshCount + 1 : prev.refreshCount,
-    }));
+  const handleStop = useCallback(async (pixelId: string) => {
+    try {
+      await VeonPixelTracker.stopPixel(pixelId);
+    } catch (_error) {
+      console.warn(`Stop failed for ${pixelId}:`, _error);
+    }
+  }, []);
+
+  const handleDestroy = useCallback(async (pixelId: string) => {
+    try {
+      await VeonPixelTracker.destroyPixel(pixelId);
+      setDestroyedPixels((prev) => new Set(prev).add(pixelId));
+    } catch (_error) {
+      console.warn(`Destroy failed for ${pixelId}:`, _error);
+    }
   }, []);
 
   if (error) {
@@ -98,7 +123,7 @@ const App = () => {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Initializing Pixel Tracker...</Text>
+        <Text style={styles.loadingText}>Initializing...</Text>
       </View>
     );
   }
@@ -107,38 +132,77 @@ const App = () => {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.statsPanel}>
-          <Text style={styles.statsPanelTitle}>📊 Pixel Statistics</Text>
+          <Text style={styles.statsPanelTitle}>
+            📊 Pixel Statistics (native SDK)
+          </Text>
           <View style={styles.statsRow}>
-            <View style={styles.statsCard}>
-              <Text style={styles.statsCardTitle}>🔴 Pixel 1</Text>
-              <Text style={styles.statsText}>
-                Appearances: {pixel1Stats.totalAppearances}
-              </Text>
-              <Text style={styles.statsText}>
-                Refreshes: {pixel1Stats.refreshCount}
-              </Text>
-              <Text style={styles.statsText}>
-                Visible: {pixel1Stats.isCurrentlyVisible ? 'Yes' : 'No'}
-              </Text>
-              <Text style={styles.statsText}>
-                Last: {pixel1Stats.lastEvent}
-              </Text>
-            </View>
-            <View style={styles.statsCard}>
-              <Text style={styles.statsCardTitle}>🟢 Pixel 2</Text>
-              <Text style={styles.statsText}>
-                Appearances: {pixel2Stats.totalAppearances}
-              </Text>
-              <Text style={styles.statsText}>
-                Refreshes: {pixel2Stats.refreshCount}
-              </Text>
-              <Text style={styles.statsText}>
-                Visible: {pixel2Stats.isCurrentlyVisible ? 'Yes' : 'No'}
-              </Text>
-              <Text style={styles.statsText}>
-                Last: {pixel2Stats.lastEvent}
-              </Text>
-            </View>
+            {PIXELS.map((pixel) => {
+              const s = stats[pixel.id];
+              const isDestroyed = destroyedPixels.has(pixel.id);
+
+              return (
+                <View key={pixel.id} style={styles.statsCard}>
+                  <Text style={styles.statsCardTitle}>{pixel.label}</Text>
+
+                  {isDestroyed ? (
+                    <Text style={styles.destroyedText}>Destroyed</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.statsText}>
+                        Appearances: {s?.totalAppearances ?? '—'}
+                      </Text>
+                      <Text style={styles.statsText}>
+                        Visible:{' '}
+                        {s ? (s.isCurrentlyVisible ? 'Yes' : 'No') : '—'}
+                      </Text>
+                      <Text style={styles.statsText}>
+                        Refresh: {s ? (s.refreshEnabled ? 'On' : 'Off') : '—'}
+                      </Text>
+                      <Text style={styles.statsText}>
+                        Next in:{' '}
+                        {s ? `${Math.round(s.nextRefreshInSeconds)}s` : '—'}
+                      </Text>
+                    </>
+                  )}
+
+                  <View style={styles.btnRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.btn,
+                        styles.btnGreen,
+                        isDestroyed && styles.btnDisabled,
+                      ]}
+                      onPress={() => handleStart(pixel.id)}
+                      disabled={isDestroyed}
+                    >
+                      <Text style={styles.btnText}>Start</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.btn,
+                        styles.btnOrange,
+                        isDestroyed && styles.btnDisabled,
+                      ]}
+                      onPress={() => handleStop(pixel.id)}
+                      disabled={isDestroyed}
+                    >
+                      <Text style={styles.btnText}>Stop</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.btn,
+                        styles.btnRed,
+                        isDestroyed && styles.btnDisabled,
+                      ]}
+                      onPress={() => handleDestroy(pixel.id)}
+                      disabled={isDestroyed}
+                    >
+                      <Text style={styles.btnText}>Destroy</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -151,23 +215,25 @@ const App = () => {
           <View style={styles.pixelsContainer}>
             <Text style={styles.pixelsLabel}>Ad Tracking Pixels</Text>
             <View style={styles.pixelsRow}>
-              <PixelTrackerView
-                pixelId="pixel_1"
-                refreshTimeSeconds={10}
-                pixelSize={30}
-                visibilityThreshold={5}
-                color="#FF0000"
-                onEvent={handlePixel1Event}
-              />
-              <View style={styles.pixelSpacer} />
-              <PixelTrackerView
-                pixelId="pixel_2"
-                refreshTimeSeconds={5}
-                pixelSize={30}
-                visibilityThreshold={5}
-                color="#00FF00"
-                onEvent={handlePixel2Event}
-              />
+              {PIXELS.map((pixel, index) => {
+                const isDestroyed = destroyedPixels.has(pixel.id);
+                if (isDestroyed) return null;
+                return (
+                  <View
+                    key={pixel.id}
+                    style={index > 0 ? styles.marginLeft : undefined}
+                  >
+                    <PixelTrackerView
+                      pixelId={pixel.id}
+                      refreshTimeSeconds={pixel.refreshTimeSeconds}
+                      pixelSize={pixel.pixelSize}
+                      visibilityThreshold={pixel.visibilityThreshold}
+                      color={pixel.color}
+                      onEvent={handleEvent(pixel.id)}
+                    />
+                  </View>
+                );
+              })}
             </View>
           </View>
 
@@ -184,6 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+
   statsPanel: {
     backgroundColor: '#f8f8f8',
     borderBottomWidth: 1,
@@ -191,7 +258,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   statsPanelTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
@@ -221,6 +288,34 @@ const styles = StyleSheet.create({
     color: '#555',
     marginTop: 2,
   },
+  destroyedText: {
+    fontSize: 11,
+    color: '#FF3B30',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
+  btnRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 4,
+  },
+  btn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  btnGreen: { backgroundColor: '#34C759' },
+  btnOrange: { backgroundColor: '#FF9500' },
+  btnRed: { backgroundColor: '#FF3B30' },
+  btnDisabled: { opacity: 0.4 },
+  btnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
   scrollView: {
     flex: 1,
     paddingHorizontal: 20,
@@ -244,11 +339,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   spacer: {
-    height: 1000,
+    height: 1200,
   },
   spacerBottom: {
     height: 40,
   },
+
   pixelsContainer: {
     alignItems: 'center',
   },
@@ -262,9 +358,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pixelSpacer: {
-    width: 8,
+  marginLeft: {
+    marginLeft: 8,
   },
+
   footer: {
     textAlign: 'center',
     padding: 20,

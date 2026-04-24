@@ -25,9 +25,8 @@ class VeonPixelTrackerRnPackage : BaseReactPackage() {
           VeonPixelTrackerRnModule::class.java.name,
           false,  // canOverrideExistingModule
           false,  // needsEagerInit
-          false,  // hasConstants
           false,  // isCxxModule
-          false   // isTurboModule — false for old architecture backward compatibility
+          false   // isTurboModule
         )
       )
     }

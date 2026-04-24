@@ -28,13 +28,19 @@ class PixelTrackerViewManager(
 
   override fun onAfterUpdateTransaction(view: PixelTrackerView) {
     super.onAfterUpdateTransaction(view)
-    // Called after all props have been set
     view.attachIfNeeded()
+
+    if (view.pixelId.isNotBlank()) {
+      VeonPixelTrackerRnModule.viewRegistry[view.pixelId] = view
+      Log.d(TAG, "View registered: ${view.pixelId}")
+    }
   }
 
   override fun onDropViewInstance(view: PixelTrackerView) {
     super.onDropViewInstance(view)
+    VeonPixelTrackerRnModule.viewRegistry.remove(view.pixelId)
     view.destroyPixel()
+    Log.d(TAG, "View unregistered: ${view.pixelId}")
   }
 
   @ReactProp(name = "pixelId")
