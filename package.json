@@ -1,12 +1,12 @@
 {
   "name": "veon-pixel-tracker-rn",
-  "version": "0.1.0",
+  "version": "0.0.5",
   "description": "React Native plugin for Veon Pixel Tracker SDK",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
     ".": {
-      "source": "./src/index.tsx",
+      "source": "./src/index.ts",
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
@@ -29,10 +29,13 @@
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
-    "!**/.*"
+    "!**/.*",
+    "!src/**/*.tsx"
   ],
   "scripts": {
     "example": "yarn workspace veon-pixel-tracker-rn-example",
+    "android": "cd example && yarn android",
+    "ios": "cd example && yarn ios",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
@@ -43,18 +46,22 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "pixel-tracker",
+    "analytics",
+    "veon",
+    "adtracking"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git.git"
+    "url": "git+https://github.com/veonadtech/veon-pixel-tracker-react-native.git"
   },
   "author": "Aleksei Grachev <gracaled79@gmail.com> (https://github.com/SitoGitHub)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git/issues"
+    "url": "https://github.com/veonadtech/veon-pixel-tracker-react-native/issues"
   },
-  "homepage": "https://github.com:veonadtech/veon-pixel-tracker-react-native-tracker-react-native.git#readme",
+  "homepage": "https://github.com/veonadtech/veon-pixel-tracker-react-native#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -71,7 +78,7 @@
     "@types/react": "^19.2.0",
     "commitlint": "^20.5.0",
     "del-cli": "^7.0.0",
-    "eslint": "^9.39.4",
+    "eslint": "9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-ft-flow": "^3.0.11",
     "eslint-plugin-prettier": "^5.5.5",
@@ -86,8 +93,8 @@
     "typescript": "^6.0.2"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=18.0.0",
+    "react-native": ">=0.73.0"
   },
   "workspaces": [
     "example"
@@ -167,5 +174,6 @@
       "release-it"
     ],
     "version": "0.62.0"
-  }
+  },
+  "sideEffects": false
 }

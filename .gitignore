@@ -84,3 +84,7 @@ android/generated
 
 # React Native Nitro Modules
 nitrogen/
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
